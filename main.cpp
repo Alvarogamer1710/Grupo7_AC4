@@ -3,81 +3,247 @@
 
 using namespace std;
 
-// --- ESTRUCTURAS DE DATOS (NODOS) ---
+// ==========================================
+// TU CLASE (ADAPTADA Y COMPLETADA)
+// ==========================================
 
-// Nodo para un Contacto individual
-struct Contacto {
-    string nombre;
-    string telefono; // Usado como ID único para duplicados
-    int edad;
-    Contacto* siguiente; // Puntero al siguiente contacto en la lista
+class ListaContactos {
+protected:
+    class Nodo {
+    private:
+        std::string nombre;
+        std::string telefono; // AGREGADO: Necesario como ID único
+        int edad;
+        Nodo* nexo;
+        Nodo* prev;
 
-    Contacto(string n, string t, int e) : nombre(n), telefono(t), edad(e), siguiente(nullptr) {}
-};
+    public:
+        // Constructor por defecto
+        Nodo(){
+            this->nombre = "";
+            this->telefono = "";
+            this->edad = 0;
+            this->nexo = nullptr;
+            this->prev = nullptr;
+        }
 
-// Nodo para un Usuario (Perfil)
-struct Usuario {
-    string username;
-    Contacto* listaContactos; // Cabecera de la lista de contactos de este usuario
-    Usuario* siguiente;       // Puntero al siguiente usuario en el sistema
+        // Constructor corregido: Ahora asigna los valores que recibe
+        Nodo(int edad, std::string nombre, std::string telefono){
+            this->nombre = nombre;
+            this->telefono = telefono;
+            this->edad = edad;
+            this->nexo = nullptr;
+            this->prev = nullptr;
+        }
 
-    Usuario(string u) : username(u), listaContactos(nullptr), siguiente(nullptr) {}
-};
+        // Getters y Setters
+        void cambiarLast(Nodo* prev) { this->prev = prev; }
+        void cambiarNexo(Nodo* nexo) { this->nexo = nexo; }
+        Nodo* getNext() { return this->nexo; }
+        Nodo* getPrev() { return this->prev; }
 
-// --- CLASE GESTORA DEL SISTEMA ---
+        std::string getName() { return this->nombre; }
+        std::string getPhone() { return this->telefono; } // Getter nuevo
+        int getEdad() { return this->edad; }
 
-class SistemaTinder {
+        void setEdad(int edad) { this->edad = edad; }
+        void setName(std::string nombre) { this->nombre = nombre; }
+    };
+
 private:
-    Usuario* listaUsuariosHead; // Inicio de la lista enlazada de usuarios
+    Nodo* first;
+    Nodo* last;
 
-    // Función auxiliar para verificar si un contacto ya existe en una lista específica
-    bool existeContacto(Contacto* cabecera, string telefono) {
-        Contacto* actual = cabecera;
+public:
+    ListaContactos() {
+        first = nullptr;
+        last = nullptr;
+    }
+
+    // Destructor para limpiar memoria (Free Store)
+    ~ListaContactos() {
+        Nodo* actual = first;
         while (actual != nullptr) {
-            if (actual->telefono == telefono) {
-                return true;
-            }
-            actual = actual->siguiente;
+            Nodo* temp = actual;
+            actual = actual->getNext();
+            delete temp;
+        }
+    }
+
+    // --- MÉTODOS DE GESTIÓN (AÑADIDOS) ---
+
+    // Verificar si existe un teléfono (para duplicados)
+    bool existe(string telefono) {
+        Nodo* temp = first;
+        while (temp != nullptr) {
+            if (temp->getPhone() == telefono) return true;
+            temp = temp->getNext();
         }
         return false;
     }
 
-public:
-    SistemaTinder() : listaUsuariosHead(nullptr) {
-        inicializarDatos();
-    }
+    void agregar(string nombre, string telefono, int edad) {
+        if (existe(telefono)) {
+            cout << "   -> Error: El contacto " << telefono << " ya existe.\n";
+            return;
+        }
 
-    // Destructor para limpiar toda la memoria (Free Store)
-    ~SistemaTinder() {
-        Usuario* usuarioActual = listaUsuariosHead;
-        while (usuarioActual != nullptr) {
-            Contacto* contactoActual = usuarioActual->listaContactos;
-            while (contactoActual != nullptr) {
-                Contacto* tempC = contactoActual;
-                contactoActual = contactoActual->siguiente;
-                delete tempC; // Liberar contacto
-            }
-            Usuario* tempU = usuarioActual;
-            usuarioActual = usuarioActual->siguiente;
-            delete tempU; // Liberar usuario
+        Nodo* nuevo = new Nodo(edad, nombre, telefono); // Free Store
+
+        if (first == nullptr) {
+            first = nuevo;
+            last = nuevo;
+        } else {
+            // Inserción al final (Lista Doblemente Enlazada)
+            last->cambiarNexo(nuevo);
+            nuevo->cambiarLast(last);
+            last = nuevo;
         }
     }
 
-    // --- GESTIÓN DE USUARIOS ---
+    void eliminar(string telefono) {
+        if (!first) return;
 
-    void agregarUsuario(string nombre) {
-        Usuario* nuevo = new Usuario(nombre); // Free Store
-        if (!listaUsuariosHead) {
-            listaUsuariosHead = nuevo;
+        Nodo* actual = first;
+        while (actual != nullptr) {
+            if (actual->getPhone() == telefono) {
+                // Caso 1: Es el único nodo
+                if (actual == first && actual == last) {
+                    first = nullptr;
+                    last = nullptr;
+                }
+                // Caso 2: Es el primero
+                else if (actual == first) {
+                    first = actual->getNext();
+                    first->cambiarLast(nullptr);
+                }
+                // Caso 3: Es el último
+                else if (actual == last) {
+                    last = actual->getPrev();
+                    last->cambiarNexo(nullptr);
+                }
+                // Caso 4: Está en medio
+                else {
+                    actual->getPrev()->cambiarNexo(actual->getNext());
+                    actual->getNext()->cambiarLast(actual->getPrev());
+                }
+
+                delete actual;
+                cout << "   -> Contacto eliminado.\n";
+                return;
+            }
+            actual = actual->getNext();
+        }
+        cout << "   -> Contacto no encontrado.\n";
+    }
+
+    void buscar(string termino) {
+        Nodo* temp = first;
+        bool found = false;
+        while (temp != nullptr) {
+            if (temp->getName() == termino || temp->getPhone() == termino) {
+                cout << "   [ENCONTRADO] " << temp->getName() << " | Tel: " << temp->getPhone() << " | Edad: " << temp->getEdad() << endl;
+                found = true;
+            }
+            temp = temp->getNext();
+        }
+        if (!found) cout << "   -> No hay coincidencias.\n";
+    }
+
+    void imprimirTodo() {
+        Nodo* temp = first;
+        if (!temp) cout << "   (Lista vacia)\n";
+        int i = 1;
+        while (temp != nullptr) {
+            cout << "   " << i++ << ". " << temp->getName() << " (" << temp->getPhone() << ") - " << temp->getEdad() << " anios\n";
+            temp = temp->getNext();
+        }
+    }
+
+    // Método para importar DE otra lista A esta lista
+    // Recibe un puntero a otra lista para leer sus datos
+    void importarDesde(ListaContactos* otraLista) {
+        if (!otraLista || !otraLista->first) return;
+
+        // Nota: Como 'Nodo' es protected, necesitamos un método público en la otra lista
+        // para extraer datos, o declaramos amistad. Para simplificar sin romper encapsulamiento,
+        // haré una iteración usando lógica de "copia manual" simulada accediendo a través de getters.
+
+        // HACK: Como estamos dentro de la clase ListaContactos, podemos acceder a los miembros privados/protegidos
+        // de *otra instancia* de la misma clase en C++.
+
+        Nodo* nodoFuente = otraLista->first;
+        int cont = 0;
+
+        while (nodoFuente != nullptr) {
+            // Solo insertamos si NO existe en ESTA lista (la función agregar ya chequea duplicados,
+            // pero lo haremos explícito para contar cuántos se importan).
+            if (!existe(nodoFuente->getPhone())) {
+                agregar(nodoFuente->getName(), nodoFuente->getPhone(), nodoFuente->getEdad());
+                cont++;
+            }
+            nodoFuente = nodoFuente->getNext();
+        }
+        cout << "   -> Importacion completada. " << cont << " contactos nuevos agregados.\n";
+    }
+};
+
+// ==========================================
+// ESTRUCTURA DE USUARIOS (Linked List de Usuarios)
+// ==========================================
+
+// Cada nodo de Usuario tiene un nombre y SU PROPIA 'ListaContactos'
+struct NodoUsuario {
+    string username;
+    ListaContactos* agenda; // Usamos tu clase aquí
+    NodoUsuario* siguiente;
+
+    NodoUsuario(string u) {
+        username = u;
+        agenda = new ListaContactos(); // Instancia de tu clase en el Heap
+        siguiente = nullptr;
+    }
+
+    ~NodoUsuario() {
+        delete agenda; // Se llama al destructor de tu clase ListaContactos
+    }
+};
+
+// ==========================================
+// GESTOR DEL SISTEMA
+// ==========================================
+
+class SistemaTinder {
+private:
+    NodoUsuario* headUsuarios;
+
+public:
+    SistemaTinder() : headUsuarios(nullptr) {
+        cargarDatosIniciales();
+    }
+
+    ~SistemaTinder() {
+        NodoUsuario* actual = headUsuarios;
+        while (actual != nullptr) {
+            NodoUsuario* temp = actual;
+            actual = actual->siguiente;
+            delete temp;
+        }
+    }
+
+    void crearUsuario(string nombre) {
+        NodoUsuario* nuevo = new NodoUsuario(nombre);
+        if (!headUsuarios) {
+            headUsuarios = nuevo;
         } else {
-            Usuario* temp = listaUsuariosHead;
+            NodoUsuario* temp = headUsuarios;
             while (temp->siguiente) temp = temp->siguiente;
             temp->siguiente = nuevo;
         }
     }
 
-    Usuario* buscarUsuario(string nombre) {
-        Usuario* temp = listaUsuariosHead;
+    NodoUsuario* buscarUsuario(string nombre) {
+        NodoUsuario* temp = headUsuarios;
         while (temp) {
             if (temp->username == nombre) return temp;
             temp = temp->siguiente;
@@ -87,224 +253,123 @@ public:
 
     void listarUsuarios() {
         cout << "\n--- Perfiles Disponibles ---\n";
-        Usuario* temp = listaUsuariosHead;
+        NodoUsuario* temp = headUsuarios;
         while (temp) {
             cout << "- " << temp->username << endl;
             temp = temp->siguiente;
         }
     }
 
-    // --- GESTIÓN DE CONTACTOS ---
+    // Datos hardcodeados (requerimiento del enunciado)
+    void cargarDatosIniciales() {
+        crearUsuario("Juan");
+        crearUsuario("Ana");
+        crearUsuario("Luis");
 
-    void agregarContacto(Usuario* usuario, string nombre, string telefono, int edad) {
-        if (!usuario) return;
+        NodoUsuario* u1 = buscarUsuario("Juan");
+        NodoUsuario* u2 = buscarUsuario("Ana");
+        NodoUsuario* u3 = buscarUsuario("Luis");
 
-        // Detección de duplicados antes de insertar
-        if (existeContacto(usuario->listaContactos, telefono)) {
-            cout << "Error: El contacto con telefono " << telefono << " ya existe.\n";
-            return;
-        }
+        // Usamos el método agregar de TU clase ListaContactos
+        // Juan (5 contactos)
+        u1->agenda->agregar("C1", "1001", 20);
+        u1->agenda->agregar("C2", "1002", 21);
+        u1->agenda->agregar("C3", "1003", 22);
+        u1->agenda->agregar("C4", "1004", 23);
+        u1->agenda->agregar("C5", "1005", 24);
 
-        Contacto* nuevo = new Contacto(nombre, telefono, edad); // Free Store
+        // Ana (6 contactos)
+        u2->agenda->agregar("D1", "2001", 30);
+        u2->agenda->agregar("D2", "2002", 31);
+        u2->agenda->agregar("D3", "2003", 32);
+        u2->agenda->agregar("D4", "2004", 33);
+        u2->agenda->agregar("D5", "2005", 34);
+        u2->agenda->agregar("D6", "2006", 35);
 
-        // Inserción al final de la lista
-        if (!usuario->listaContactos) {
-            usuario->listaContactos = nuevo;
-        } else {
-            Contacto* temp = usuario->listaContactos;
-            while (temp->siguiente) temp = temp->siguiente;
-            temp->siguiente = nuevo;
-        }
-        cout << "Contacto agregado exitosamente.\n";
-    }
-
-    void eliminarContacto(Usuario* usuario, string telefono) {
-        if (!usuario || !usuario->listaContactos) return;
-
-        Contacto* actual = usuario->listaContactos;
-        Contacto* anterior = nullptr;
-
-        while (actual) {
-            if (actual->telefono == telefono) {
-                if (anterior == nullptr) {
-                    // Borrar el primero (cabeza)
-                    usuario->listaContactos = actual->siguiente;
-                } else {
-                    // Borrar uno intermedio o final
-                    anterior->siguiente = actual->siguiente;
-                }
-                delete actual; // Liberar memoria
-                cout << "Contacto eliminado.\n";
-                return;
-            }
-            anterior = actual;
-            actual = actual->siguiente;
-        }
-        cout << "Contacto no encontrado.\n";
-    }
-
-    void buscarContacto(Usuario* usuario, string busqueda) {
-        if (!usuario) return;
-        Contacto* temp = usuario->listaContactos;
-        bool encontrado = false;
-        while (temp) {
-            if (temp->nombre == busqueda || temp->telefono == busqueda) {
-                cout << "Encontrado: " << temp->nombre << " (" << temp->telefono << ") - " << temp->edad << " años.\n";
-                encontrado = true;
-            }
-            temp = temp->siguiente;
-        }
-        if (!encontrado) cout << "No se encontraron coincidencias.\n";
-    }
-
-    void verMisContactos(Usuario* usuario) {
-        if (!usuario) return;
-        cout << "\n--- Contactos de " << usuario->username << " ---\n";
-        Contacto* temp = usuario->listaContactos;
-        int count = 0;
-        if (!temp) cout << "(Lista vacia)\n";
-        while (temp) {
-            cout << ++count << ". " << temp->nombre << " | Tel: " << temp->telefono << " | Edad: " << temp->edad << endl;
-            temp = temp->siguiente;
-        }
-    }
-
-    // --- FUNCIONES AVANZADAS: IMPORTAR ---
-
-    void importarContactos(Usuario* destino, string nombreOrigen) {
-        if (destino->username == nombreOrigen) {
-            cout << "No puedes importarte a ti mismo.\n";
-            return;
-        }
-
-        Usuario* origen = buscarUsuario(nombreOrigen);
-        if (!origen) {
-            cout << "Usuario origen no encontrado.\n";
-            return;
-        }
-
-        cout << "Importando contactos de " << origen->username << " a " << destino->username << "...\n";
-
-        Contacto* tempOrigen = origen->listaContactos;
-        int importados = 0;
-        int duplicados = 0;
-
-        while (tempOrigen) {
-            // Verificar si ya existe en el destino para evitar duplicados
-            if (!existeContacto(destino->listaContactos, tempOrigen->telefono)) {
-                // Crear una COPIA profunda (nuevo nodo en free store)
-                agregarContacto(destino, tempOrigen->nombre, tempOrigen->telefono, tempOrigen->edad);
-                importados++;
-            } else {
-                duplicados++;
-            }
-            tempOrigen = tempOrigen->siguiente;
-        }
-        cout << "Proceso finalizado. Importados: " << importados << ". Omitidos (duplicados): " << duplicados << ".\n";
-    }
-
-    // --- CARGA INICIAL (HARDCODED) ---
-    void inicializarDatos() {
-        // Crear 3 perfiles
-        agregarUsuario("Juan_Dev");
-        agregarUsuario("Maria_CEO");
-        agregarUsuario("Carlos_Designer");
-
-        Usuario* u1 = buscarUsuario("Juan_Dev");
-        Usuario* u2 = buscarUsuario("Maria_CEO");
-        Usuario* u3 = buscarUsuario("Carlos_Designer");
-
-        // Regla: Al menos 5 contactos, cantidades diferentes para cada uno.
-
-        // Usuario 1: 5 contactos
-        agregarContacto(u1, "Ana", "600111001", 24);
-        agregarContacto(u1, "Bea", "600111002", 25);
-        agregarContacto(u1, "Clara", "600111003", 22);
-        agregarContacto(u1, "Diana", "600111004", 27);
-        agregarContacto(u1, "Elena", "600111005", 21);
-
-        // Usuario 2: 6 contactos
-        agregarContacto(u2, "Pedro", "600222001", 30);
-        agregarContacto(u2, "Pablo", "600222002", 31);
-        agregarContacto(u2, "Luis", "600222003", 29);
-        agregarContacto(u2, "Jorge", "600222004", 35);
-        agregarContacto(u2, "Marta", "600222005", 28);
-        agregarContacto(u2, "Sofia", "600222006", 26);
-
-        // Usuario 3: 7 contactos (Algunos repetidos a propósito para probar lógica de duplicados futura)
-        agregarContacto(u3, "Raul", "600333001", 40);
-        agregarContacto(u3, "Santi", "600333002", 41);
-        agregarContacto(u3, "Toni", "600333003", 38);
-        agregarContacto(u3, "Ana", "600111001", 24); // Repetida de Juan (para probar importación)
-        agregarContacto(u3, "Victor", "600333005", 33);
-        agregarContacto(u3, "Hugo", "600333006", 32);
-        agregarContacto(u3, "Ivan", "600333007", 36);
-
-        cout << "--- Sistema Inicializado con Datos de Prueba ---\n";
+        // Luis (7 contactos, incluye repetidos para probar lógica)
+        u3->agenda->agregar("E1", "3001", 40);
+        u3->agenda->agregar("E2", "3002", 41);
+        u3->agenda->agregar("E3", "3003", 42);
+        u3->agenda->agregar("E4", "3004", 43);
+        u3->agenda->agregar("E5", "3005", 44);
+        u3->agenda->agregar("C1", "1001", 20); // Repetido de Juan
+        u3->agenda->agregar("E7", "3007", 46);
     }
 };
 
-// --- MENÚ Y MAIN ---
+// ==========================================
+// MAIN
+// ==========================================
 
 int main() {
-    SistemaTinder sistema; // Se ejecuta el constructor y la carga inicial
-    string inputUsuario;
+    SistemaTinder app;
+    string input;
 
     while (true) {
         cout << "\n==============================\n";
-        cout << "      TINDER CONTACT MANAGER      \n";
+        cout << "      TINDER MANAGEMENT       \n";
         cout << "==============================\n";
-        sistema.listarUsuarios();
-        cout << "Escribe el nombre de usuario para iniciar sesion (o 'salir'): ";
-        cin >> inputUsuario;
+        app.listarUsuarios();
+        cout << "Usuario (o 'salir'): ";
+        cin >> input;
 
-        if (inputUsuario == "salir") break;
+        if (input == "salir") break;
 
-        Usuario* usuarioActual = sistema.buscarUsuario(inputUsuario);
+        NodoUsuario* usuario = app.buscarUsuario(input);
 
-        if (usuarioActual) {
-            int opcion = -1;
-            while (opcion != 0) {
-                cout << "\n--- Sesion de: " << usuarioActual->username << " ---\n";
-                cout << "1. Ver mis contactos\n";
-                cout << "2. Agregar nuevo contacto\n";
-                cout << "3. Buscar contacto\n";
-                cout << "4. Eliminar contacto\n";
-                cout << "5. Importar contactos de otro usuario\n";
+        if (usuario) {
+            int op = -1;
+            while (op != 0) {
+                cout << "\n--- Perfil: " << usuario->username << " ---\n";
+                cout << "1. Ver contactos\n";
+                cout << "2. Agregar contacto\n";
+                cout << "3. Eliminar contacto\n";
+                cout << "4. Buscar contacto\n";
+                cout << "5. Importar contactos\n";
                 cout << "0. Cerrar sesion\n";
                 cout << "Opcion: ";
-                cin >> opcion;
+                cin >> op;
 
-                if (opcion == 1) {
-                    sistema.verMisContactos(usuarioActual);
+                if (op == 1) {
+                    usuario->agenda->imprimirTodo();
                 }
-                else if (opcion == 2) {
+                else if (op == 2) {
                     string n, t; int e;
                     cout << "Nombre: "; cin >> n;
-                    cout << "Telefono (ID): "; cin >> t;
+                    cout << "Telefono: "; cin >> t;
                     cout << "Edad: "; cin >> e;
-                    sistema.agregarContacto(usuarioActual, n, t, e);
+                    usuario->agenda->agregar(n, t, e);
                 }
-                else if (opcion == 3) {
-                    string q;
-                    cout << "Buscar (Nombre o Tel): "; cin >> q;
-                    sistema.buscarContacto(usuarioActual, q);
-                }
-                else if (opcion == 4) {
+                else if (op == 3) {
                     string t;
-                    cout << "Telefono a eliminar: "; cin >> t;
-                    sistema.eliminarContacto(usuarioActual, t);
+                    cout << "Telefono a borrar: "; cin >> t;
+                    usuario->agenda->eliminar(t);
                 }
-                else if (opcion == 5) {
-                    string origen;
-                    cout << "Nombre del usuario del cual importar: "; cin >> origen;
-                    sistema.importarContactos(usuarioActual, origen);
+                else if (op == 4) {
+                    string q;
+                    cout << "Buscar (nom/tel): "; cin >> q;
+                    usuario->agenda->buscar(q);
+                }
+                else if (op == 5) {
+                    string origenName;
+                    cout << "Nombre del usuario origen: "; cin >> origenName;
+                    if (origenName == usuario->username) {
+                        cout << "No puedes importarte a ti mismo.\n";
+                    } else {
+                        NodoUsuario* origen = app.buscarUsuario(origenName);
+                        if (origen) {
+                            cout << "Importando de " << origenName << "...\n";
+                            // Pasamos la lista del otro usuario a la funcion de importacion
+                            usuario->agenda->importarDesde(origen->agenda);
+                        } else {
+                            cout << "Usuario origen no encontrado.\n";
+                        }
+                    }
                 }
             }
         } else {
-            cout << "Usuario no encontrado. Intenta de nuevo.\n";
+            cout << "Usuario no encontrado.\n";
         }
     }
-
     return 0;
 }

@@ -1,5 +1,6 @@
 
-#include <string>class ListaContactos {
+#include <string>
+class ListaContactos {
     protected:
     class Nodo {
         std::string nombre;
